@@ -19,7 +19,7 @@
 #define HOSTNAME_POS 2
 #define PORTNAME_POS 3
 
-class ClientSetupFunctor{
+class ClientConnection{
 public:
     static bool setup(socket_t *skt, const char *hostname, const char *service){
         int s;
@@ -39,7 +39,7 @@ public:
 
 int main(int argc, char *argv[]){
     socket_t client;
-    ClientSetupFunctor::setup(&client, argv[HOSTNAME_POS], argv[PORTNAME_POS]);
+    ClientConnection::setup(&client, argv[HOSTNAME_POS], argv[PORTNAME_POS]);
     std::string line;
     while (true){
         std::getline(std::cin, line);
@@ -48,7 +48,9 @@ int main(int argc, char *argv[]){
         m.map(line);
         m.send_data();
     }
-    // Horrible magic number. MUST CHANGE    
+    // Horrible magic number. MUST CHANGE  
+    int i = 4;
+    socket_send(&client, &i, INT_SIZE);  
     socket_send(&client, END_SIG, 4);
     return 0;
 }

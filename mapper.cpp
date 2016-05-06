@@ -68,7 +68,9 @@ void Mapper::send_temp_info(){
 		buffer += temp_buf.str();
 		std::cout << buffer;
 		char *c_str_package = (char*) buffer.c_str();
-		socket_send(this->s, c_str_package, buffer.size());
+		int i = buffer.size();
+		socket_send(this->s, &i, INT_SIZE);
+		socket_send(this->s, c_str_package, i);
 	}
 }
 

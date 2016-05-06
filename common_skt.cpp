@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include "common_skt.h"
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 bool socket_create(socket_t *skt, struct addrinfo *info){
     struct addrinfo *iter;
     int fd;
@@ -63,7 +67,7 @@ bool socket_send(socket_t *skt, const void *msg, int len){
     return sent == len;
 }
 
-bool socket_recive(socket_t *skt, void *buffer, int len){
+bool socket_receive(socket_t *skt, void *buffer, int len){
     int received = 0;
     while (received < len){
         int r = recv(skt->skt_fd, (&buffer)[received], len - received, 

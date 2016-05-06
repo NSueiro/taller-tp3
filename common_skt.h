@@ -13,7 +13,7 @@ bool socket_accept(socket_t *skt, socket_t *new_skt);
 bool socket_connect(socket_t *skt, struct addrinfo *info);
 bool socket_shutdown(socket_t *skt, int sig);
 bool socket_send(socket_t *skt, const void *msg, int len);
-bool socket_recive(socket_t *skt, void *buffer, int len);
+bool socket_receive(socket_t *skt, void *buffer, int len);
 bool socket_close(socket_t *skt);
 
 #endif // SOCKET_H
