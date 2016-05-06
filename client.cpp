@@ -16,6 +16,8 @@
 
 #define INT_SIZE 4
 #define END_SIG "End\n"
+#define HOSTNAME_POS 2
+#define PORTNAME_POS 3
 
 class ClientSetupFunctor{
 public:
@@ -45,7 +47,8 @@ int main(int argc, char *argv[]){
         Mapper m(&client);
         m.map(line);
         m.send_data();
+    }
     // Horrible magic number. MUST CHANGE    
-    socket_send(&client, END_SIG, 4)
+    socket_send(&client, END_SIG, 4);
     return 0;
 }
