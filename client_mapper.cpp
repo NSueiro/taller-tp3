@@ -12,7 +12,7 @@
 #include <string>
 #include "common_skt.h"
 #include <sstream>
-#include "mapper.h"
+#include "client_mapper.h"
 
 #define INT_SIZE 4
 #define END_SIG "End\n"
@@ -66,7 +66,6 @@ void Mapper::send_temp_info(){
 		buffer += day_buf.str();
 		buffer += " ";
 		buffer += temp_buf.str();
-		std::cout << buffer;
 		char *c_str_package = (char*) buffer.c_str();
 		int i = buffer.size();
 		socket_send(this->s, &i, INT_SIZE);

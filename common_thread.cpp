@@ -1,4 +1,4 @@
-#include "thread.h"
+#include "common_thread.h"
 
 void *Thread::runner(void *data) {
     Thread *self = (Thread*)data;

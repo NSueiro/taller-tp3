@@ -9,10 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "common_skt.h"
-
-#ifndef MSG_NOSIGNAL
-#define MSG_NOSIGNAL 0
-#endif
+#include <iostream>
 
 bool socket_create(socket_t *skt, struct addrinfo *info){
     struct addrinfo *iter;

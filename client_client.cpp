@@ -12,12 +12,12 @@
 #include <string>
 #include "common_skt.h"
 #include <sstream>
-#include "mapper.h"
+#include "client_mapper.h"
 
 #define INT_SIZE 4
 #define END_SIG "End\n"
-#define HOSTNAME_POS 2
-#define PORTNAME_POS 3
+#define HOSTNAME_POS 1
+#define PORTNAME_POS 2
 
 class ClientConnection{
 public:

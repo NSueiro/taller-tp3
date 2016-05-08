@@ -13,15 +13,18 @@
 #include <vector>
 #include "common_skt.h"
 #include <sstream>
-#include "mapper.h"
-#include "mutex.h"
-#include "thread.h"
+#include "common_mutex.h"
+#include "common_thread.h"
+#include <limits>
 
 #define INT_SIZE 4
 #define END_SIG "End\n"
-#define HOSTNAME_POS 2
-#define PORTNAME_POS 3
+#define PORTNAME_POS 1
 #define SIZE_QUEUE 100
+#define DAYS_OF_MARCH 31
+// Unreal low temperature. Should be -infinity, but this works as well since
+// it's impossible to reach this temperature
+#define LOWEST_TEMP -5000
 
 class ServerPeerConnection{
 public:
@@ -60,6 +63,21 @@ public:
         this->temp_data[day - 1].push_back(info);
         m.unlock();
     }
+
+    std::vector< std::pair<std::string, int> >& get(int day){
+        return this->temp_data[day - 1];
+    }
+
+    void print(){
+        for (int i = 0; i < 31; ++i){
+            std::cout << "Dia: " << i + 1 << ". Info: ";
+            for (std::vector< std::pair<std::string, int> >::iterator it = this->temp_data[i].begin();
+                it != this->temp_data[i].end(); ++it){
+                std::cout << it->first << " " << it->second << " - ";
+            }
+            std::cout << std::endl;
+        }
+    }
 };
 
 class Receptor: public Thread{
@@ -71,19 +89,23 @@ private:
     void receive_city(){
         int city_len;
         socket_receive(skt, &city_len, INT_SIZE);
-        char *city_c_str = (char*)malloc(sizeof(char) * city_len);
+        char *city_c_str = (char*)malloc(sizeof(char) * city_len + 1);
+        memset(city_c_str, 0, city_len + 1);
         socket_receive(skt, city_c_str, city_len);
         std::string aux(city_c_str);
         this->city = aux;
+        free(city_c_str);
     }
 
     void receive_temps(){
         while(true){
             int info_len;
             socket_receive(skt, &info_len, INT_SIZE);
-            char *info_c_str = (char*)malloc(sizeof(char) * info_len);
+            char *info_c_str = (char*)malloc(sizeof(char) * info_len + 1);
+            memset(info_c_str, 0, info_len + 1);
             socket_receive(skt, info_c_str, info_len);
             std::string aux(info_c_str);
+            free(info_c_str);
 
             if (aux == END_SIG) return;
             
@@ -115,6 +137,11 @@ public:
         receive_city();
         receive_temps();
     }
+
+    ~Receptor(){
+        socket_close(this->skt);
+        free(this->skt);
+    }
 };
 
 class ClientReceiver: public Thread {
@@ -135,18 +162,59 @@ public:
     void execute(){
         // keep_accepting is modified by other thread
         while (keep_accepting){
+            std::cout << "Entro a recibir clientes\n";
             socket_t *peer_skt = (socket_t *)malloc(sizeof(socket_t));
-            ServerPeerConnection::accept_client(skt, peer_skt);
+            bool status = ServerPeerConnection::accept_client(skt, peer_skt);
+            if (!status) {
+                free(peer_skt);
+                break;
+            }
             Receptor *r = new Receptor(peer_skt, temp_data);
             r->start();
             receptors.push_back(r);
             // Should delete the ones that have already finished
             // from the receptor vector
         }
+        std::cout << "Finalizo de recibir clientes\n";
         for (std::vector<Receptor*>::iterator it = receptors.begin(); 
              it != receptors.end(); ++it){
             (*it)->join();
-        } 
+        }
+        // receptors and sockets have the same size 
+        for (size_t i = 0; i < receptors.size(); ++i){
+            delete receptors[i];
+        }
+    }
+};
+
+class Reducer: public Thread {
+private:
+    TemperatureTable& temp_data;
+    std::vector<int>& max_temps;
+    std::vector< std::vector<std::string> >& cities;
+    int day;
+public:
+    Reducer(TemperatureTable& temp_data,
+            std::vector<int>& max_temps,
+            std::vector< std::vector<std::string> >& cities,
+            int& day): temp_data(temp_data), max_temps(max_temps), 
+                      cities(cities){
+        this->day = day;
+    }
+
+    void execute(){
+        for (std::vector< std::pair<std::string, int> >::iterator it = 
+                this->temp_data.get(day).begin();
+            it != this->temp_data.get(day).end(); ++it){
+            if (it->second > this->max_temps[this->day - 1]){
+                this->max_temps[this->day - 1] = it->second;
+                cities[this->day - 1].clear();
+                cities[this->day - 1].push_back(it->first);
+            }
+            else if (it->second == max_temps[this->day - 1]){
+                cities[this->day - 1].push_back(it->first);
+            }
+        }
     }
 };
 
@@ -154,16 +222,46 @@ int main(int argc, char *argv[]){
     socket_t server;
     ServerPeerConnection::setup(&server, argv[PORTNAME_POS]);
     std::string line;
-    std::getline(std::cin, line);
     bool keep_accepting_mappers = true;
     TemperatureTable temp_data;
     ClientReceiver client_receiver(temp_data, keep_accepting_mappers, &server);
     client_receiver.start();
     while (line != "q"){
+        std::cout << "Esperando la q: ";
         std::getline(std::cin, line);
+        std::cout << std::endl;
     }
     keep_accepting_mappers = false;
+    socket_shutdown(&server, SHUT_RDWR);
     client_receiver.join();
-    // For each day, throw a reducer in a thread.
+
+    std::vector< std::vector<std::string> > cities(DAYS_OF_MARCH, 
+                                                   std::vector<std::string>(0));
+    std::vector<int> max_temps(31, LOWEST_TEMP);
+    std::vector<Reducer*> reducers;
+    for (int i = 1; i <= DAYS_OF_MARCH; ++i){
+        Reducer *r = new Reducer(temp_data, max_temps, cities, i);
+        r->start();
+        reducers.push_back(r);
+    }
+
+    for (std::vector<Reducer*>::iterator it = reducers.begin(); 
+         it != reducers.end(); ++it){
+        (*it)->join();
+    }
+    std::cout << "Llego\n";
+
     // Print the results
+    for (int i = 0; i < 31; ++i){
+        std::cout << "Dia: " << i + 1 << " - Temperatura:" << max_temps[i] << " - Ciudad: ";
+        for (std::vector<std::string>::iterator it = cities[i].begin();
+            it != cities[i].end(); ++it){
+            std::cout << " " << *it;
+        }
+        std::cout << std::endl;
+    }
+    for (size_t i = 0; i < reducers.size(); ++i){
+        delete reducers[i];
+    }
+    return 0;
 }
