@@ -106,7 +106,7 @@ private:
             socket_receive(skt, info_c_str, info_len);
             std::string aux(info_c_str);
             free(info_c_str);
-
+            std::cout << aux << std::endl;
             if (aux == END_SIG) return;
             
             std::stringstream ss(aux);
@@ -162,7 +162,6 @@ public:
     void execute(){
         // keep_accepting is modified by other thread
         while (keep_accepting){
-            std::cout << "Entro a recibir clientes\n";
             socket_t *peer_skt = (socket_t *)malloc(sizeof(socket_t));
             bool status = ServerPeerConnection::accept_client(skt, peer_skt);
             if (!status) {
@@ -175,12 +174,10 @@ public:
             // Should delete the ones that have already finished
             // from the receptor vector
         }
-        std::cout << "Finalizo de recibir clientes\n";
         for (std::vector<Receptor*>::iterator it = receptors.begin(); 
              it != receptors.end(); ++it){
             (*it)->join();
         }
-        // receptors and sockets have the same size 
         for (size_t i = 0; i < receptors.size(); ++i){
             delete receptors[i];
         }
@@ -249,16 +246,17 @@ int main(int argc, char *argv[]){
          it != reducers.end(); ++it){
         (*it)->join();
     }
-    std::cout << "Llego\n";
 
     // Print the results
     for (int i = 0; i < 31; ++i){
-        std::cout << "Dia: " << i + 1 << " - Temperatura:" << max_temps[i] << " - Ciudad: ";
+        std::cout << i + 1 << ": ";
+        bool aux = false;
         for (std::vector<std::string>::iterator it = cities[i].begin();
             it != cities[i].end(); ++it){
-            std::cout << " " << *it;
+            if (aux) std::cout << "/";
+            std::cout << *it;
         }
-        std::cout << std::endl;
+        std::cout << " (" << max_temps[i] << ")" << std::endl;
     }
     for (size_t i = 0; i < reducers.size(); ++i){
         delete reducers[i];

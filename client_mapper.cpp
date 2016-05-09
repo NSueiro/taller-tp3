@@ -72,8 +72,3 @@ void Mapper::send_temp_info(){
 		socket_send(this->s, c_str_package, i);
 	}
 }
-
-void Mapper::send_data(){
-	this->send_city();
-	this->send_temp_info();
-}

@@ -41,12 +41,15 @@ int main(int argc, char *argv[]){
     socket_t client;
     ClientConnection::setup(&client, argv[HOSTNAME_POS], argv[PORTNAME_POS]);
     std::string line;
-    while (true){
-        std::getline(std::cin, line);
-        if (line == "") break;
+    bool flag = false;
+    while (std::getline(std::cin, line)){
         Mapper m(&client);
         m.map(line);
-        m.send_data();
+        if (!flag){
+            m.send_city();
+            flag = true;
+        }
+        m.send_temp_info();
     }
     // Horrible magic number. MUST CHANGE  
     int i = 4;
